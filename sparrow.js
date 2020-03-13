@@ -1,3 +1,9 @@
+/**
+*  User: Huajie
+*  Date: 2020/03/13
+*  Time: 23:17
+*
+*/
 class Sparrow{
 
 	constructor(url, option){
@@ -146,7 +152,9 @@ class Sparrow{
 				    	return response.blob()
 				  } else if (this.responseType == 'ARRAYBUFFER') {
 				    	return response.arrayBuffer()
-				  } else {
+				  }else if (this.responseType == 'FORMDATA') {
+                        return response.formData()
+                  } else {
 					   	return Promise.reject({
 				        	status: 400,
 				        	statusText: 'Sorry, Response type '+this.responseType+' is not supported'
