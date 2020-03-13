@@ -1,0 +1,17 @@
+{
+  "name": "sparrow",
+  "version": "1.0.0",
+  "description": "An easy-to-use package based on fetch",
+  "main": "sparrow.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "fetch"
+  ],
+  "author": "Huajie1988",
+  "license": "ISC"
+}
