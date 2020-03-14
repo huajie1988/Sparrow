@@ -26,6 +26,16 @@ class Sparrow{
        this.type='JSON';
        this.responseType='JSON';
        this.timeout=30000;
+       this.successCallback=null;
+       this.failedCallback=null;
+       this.contentLength=0;
+       this.progress=null;
+       this.progressComplete=null;//感觉没有需求，可能废弃
+
+       this.setSuccessCallbak(function (data) {});
+       this.setFailedCallbak(function (e) {console.log(e)});
+       this.setProgress(function(received,totalLength){console.log(received)});
+       this.setProgressComplete(function(){});
        this.setUrl(url);
        this.setOption(option)
     }
@@ -126,11 +136,31 @@ class Sparrow{
         return this;
     }
 
+    setSuccessCallbak(successCallback){
+        this.successCallback=successCallback;
+        return this;
+    }
+
+    setFailedCallbak(failedCallback){
+        this.failedCallback=failedCallback;
+        return this;
+    }
+
+    setProgress(progress){
+        this.progress=progress;
+        return this;
+    }
+
+    setProgressComplete(progressComplete){
+        this.progressComplete=progressComplete;
+        return this;
+    }
+
     __runfetch(url,option){
         return fetch(url,option);
     }
 
-    runTimeOut(){
+    __runTimeOut(){
         return new Promise((resolve, reject) => {
               setTimeout(() => {
                        resolve(new Response("timeout", { status: 504, statusText: this.option['method']+' '+this.url+" is timeout " }));
@@ -139,9 +169,54 @@ class Sparrow{
         });
     }
 
+    __createReject(status,statusText){
+        return  Promise.reject({
+                        status: status,
+                        statusText: statusText
+                    });
+    }
+
     run(successCallback,failedCallback){
         this.setBody();
-        Promise.race([this.runTimeOut(), this.__runfetch(this.url,this.option)])
+        Promise.race([this.__runTimeOut(), this.__runfetch(this.url,this.option)])
+        .then(response => {
+            if (response.ok) {
+                    this.contentLength=response.headers.get('Content-Length');
+                    return response.body
+            }else{
+                    return this.__createReject(response.status,response.statusText);
+            }
+
+        })
+        .then(body => {
+              const reader = body.getReader();
+              let bytesReceived = 0;
+              let progressFunc=this.progress;
+              let contentLength=this.contentLength;
+              let progressCompleteFunc=this.progressComplete;
+              return new ReadableStream({
+                start(controller) {
+                  return pump();
+
+                  function pump() {
+                    return reader.read().then(({ done, value }) => {
+
+                      if (done) {
+                        progressCompleteFunc();
+                        controller.close();
+                        return;
+                      }
+
+                      controller.enqueue(value);
+                      bytesReceived += value.length;
+                      progressFunc(bytesReceived,contentLength)
+                      return pump();
+                    });
+                  }
+                }
+              })
+        })
+        .then(stream => new Response(stream))
         .then(response => {
             if (response.ok) {
                  if (this.responseType == 'JSON') {
@@ -155,21 +230,24 @@ class Sparrow{
                   }else if (this.responseType == 'FORMDATA') {
                         return response.formData()
                   } else {
-                           return Promise.reject({
-                            status: 400,
-                            statusText: 'Sorry, Response type '+this.responseType+' is not supported'
-                      })
+                            return this.__createReject(400,'Sorry, Response type '+this.responseType+' is not supported');
                   }
-                
             }else{
-                return Promise.reject({
-                    status: response.status,
-                    statusText: response.statusText
-                  })
+                    return this.__createReject(response.status,response.statusText);
             }
         })
-        .then(data => successCallback(data))
-        .catch(e => failedCallback(e))        
+        .then(data => {
+            if (this.vDefined(successCallback)) {
+                this.setSuccessCallbak(successCallback);
+            }
+            this.successCallback(data);
+        })
+        .catch(e => {
+             if (this.vDefined(failedCallback)) {
+                this.setFailedCallbak(failedCallback);
+            }
+            this.failedCallback(e);
+        })
     }
 
 }

@@ -9,19 +9,17 @@
 	<input type="file" name="file">
 	<input type="button" name="btn" id="btn" value="submit" onclick="upload();">
 <script type="text/javascript">
+		function success(data) {
+			console.log(data)
+		}
 		function upload() {
 			let fileField = document.querySelector("input[type='file']");
 			let sp = new Sparrow('http://127.0.0.5/example/login.php');
-			sp.setMethod('POST');//.setOption({'mode':'cors'})
+			sp.setMethod('GET');//.setOption({'mode':'cors'})
 			sp.setField('a','ss').setField('ddd','sssww');
-			sp.setType('DEFAULT').setTimeOut(5000);
-			//sp.setResponseType('BLOB2')
-			sp.run(function (data) {
-				// body...
-				console.log(data)
-			},function(e){
-				console.log(e)
-			})
+			sp.setType('DEFAULT').setTimeOut(5000).setSuccessCallbak(success);
+			
+			sp.run()
 		}
 	</script>
 </body>
